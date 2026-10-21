@@ -90,10 +90,21 @@ def validate_target(target_range: str) -> str:
 def run_nmap_scan(
     target_range: str,
     timeout: int = DEFAULT_TIMEOUT_SECONDS,
+    full_scan: bool = False,
 ) -> str:
     """
     Ejecuta Nmap como proceso externo y devuelve su salida en XML
     (como texto, sin procesar todavía).
+
+    full_scan (RF-3, mejora V2):
+        False (default) -> modo rápido, Nmap usa sus ~1000 puertos
+                            "top" más comunes. Es el comportamiento
+                            que ya teníamos en la V1.
+        True            -> modo completo, se agrega la flag `-p-`
+                            que le pide a Nmap escanear los 65535
+                            puertos posibles. Mucho más lento (puede
+                            tardar varios minutos incluso en un solo
+                            host), pero no se salta nada.
 
     Parámetros del comando que usamos:
         -sV   -> detección de servicio/versión (RF-4)
@@ -129,7 +140,10 @@ def run_nmap_scan(
     la línea de comandos -- nunca se agrega, infiere, ni expande
     ningún otro rango por fuera de ese valor.
     """
-    comando = ["nmap", "-sV", "-Pn", "-oX", "-", target_range]
+    comando = ["nmap", "-sV", "-Pn", "-oX", "-"]
+    if full_scan:
+        comando.append("-p-")
+    comando.append(target_range)
 
     try:
         resultado = subprocess.run(
@@ -236,6 +250,7 @@ def parse_nmap_xml(xml_data: str, target_range: str) -> ScanSession:
 def scan(
     target_range: str,
     timeout: int = DEFAULT_TIMEOUT_SECONDS,
+    full_scan: bool = False,
 ) -> ScanSession:
     """
     Función principal del módulo: orquesta validación + ejecución +
@@ -245,7 +260,9 @@ def scan(
     necesita llamar -- no necesita saber nada sobre subprocess ni
     sobre XML. Eso es "encapsulamiento": escondemos el detalle
     técnico detrás de una función simple de usar.
+
+    full_scan se pasa tal cual a run_nmap_scan() -- ver RF-3 ahí.
     """
     target_range = validate_target(target_range)
-    xml_crudo = run_nmap_scan(target_range, timeout=timeout)
+    xml_crudo = run_nmap_scan(target_range, timeout=timeout, full_scan=full_scan)
     return parse_nmap_xml(xml_crudo, target_range)

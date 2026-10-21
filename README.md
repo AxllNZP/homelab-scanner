@@ -38,13 +38,21 @@ Requiere tener [Nmap](https://nmap.org/) instalado en el sistema (viene preinsta
 ## Uso
 
 ```bash
-python3 -m scanner.cli <IP o rango CIDR> [--timeout SEGUNDOS] [--output archivo.pdf]
+python3 -m scanner.cli <IP o rango CIDR> [--timeout SEGUNDOS] [--output archivo.pdf] [--full] [--excel]
 ```
 
-Ejemplo:
+| Opción | Qué hace |
+| --- | --- |
+| `--timeout SEGUNDOS` | Tiempo máximo antes de cancelar el escaneo (default: 300) |
+| `--output archivo.pdf` | Nombre del archivo PDF a generar (default: `reporte_scan.pdf`) |
+| `--full` | Escanea los 65535 puertos en vez del modo rápido (puertos comunes) |
+| `--excel` | Genera también un reporte en Excel (.xlsx), además del PDF |
+
+Ejemplos:
 
 ```bash
 python3 -m scanner.cli 192.168.56.0/24
+python3 -m scanner.cli 192.168.56.10 --full --excel
 ```
 
 ## Estructura del proyecto
@@ -55,7 +63,8 @@ homelab-scanner/
 │   ├── cli.py          # Interfaz de línea de comandos
 │   ├── scan_engine.py  # Motor de escaneo (Nmap vía subprocess)
 │   ├── models.py        # Estructura de datos interna
-│   └── report.py        # Generación del reporte PDF
+│   ├── report.py        # Generación del reporte PDF
+│   └── excel_export.py  # Generación del reporte Excel
 ├── docs/
 │   └── SRS.md           # Especificación de requisitos
 └── requirements.txt
@@ -67,6 +76,6 @@ Desarrollado y probado en una red interna aislada de VirtualBox, con Kali Linux 
 
 ## Roadmap (mejoras futuras)
 
-- [ ] Modo de escaneo completo (65535 puertos) además del modo rápido actual
-- [ ] Exportación de resultados también a Excel (.xlsx)
+- [x] Modo de escaneo completo (65535 puertos) además del modo rápido actual
+- [x] Exportación de resultados también a Excel (.xlsx)
 - [ ] Soporte para IPv6

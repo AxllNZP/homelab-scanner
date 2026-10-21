@@ -24,6 +24,7 @@ programa completo.
 import argparse
 import sys
 
+from scanner.excel_export import generate_excel
 from scanner.report import generate_pdf
 from scanner.scan_engine import InvalidTargetError, scan
 
@@ -72,6 +73,26 @@ def construir_parser() -> argparse.ArgumentParser:
         help="Ruta del archivo PDF a generar (default: reporte_scan.pdf).",
     )
 
+    # RF-3 (V2): modo completo, escanea los 65535 puertos en vez de
+    # solo los ~1000 más comunes. `action="store_true"` significa
+    # que es una bandera simple: si el usuario escribe --full, vale
+    # True; si no la escribe, vale False por defecto -- no necesita
+    # que le pases un valor (ej. --full true), solo con ponerla basta.
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Escanea los 65535 puertos en vez del modo rápido (más lento).",
+    )
+
+    # RF-9 (V2): generar también un archivo Excel, además del PDF.
+    # Es opcional -- el comportamiento por defecto (sin esta bandera)
+    # sigue siendo igual que antes, solo PDF.
+    parser.add_argument(
+        "--excel",
+        action="store_true",
+        help="Además del PDF, genera también un reporte en Excel (.xlsx).",
+    )
+
     return parser
 
 
@@ -90,11 +111,16 @@ def main() -> int:
     parser = construir_parser()
     argumentos = parser.parse_args()
 
-    print(f"[*] Iniciando escaneo de: {argumentos.target_range}")
+    modo = "completo (65535 puertos)" if argumentos.full else "rápido (puertos comunes)"
+    print(f"[*] Iniciando escaneo de: {argumentos.target_range} (modo {modo})")
     print("[*] Esto puede tardar unos minutos dependiendo del rango...\n")
 
     try:
-        sesion = scan(argumentos.target_range, timeout=argumentos.timeout)
+        sesion = scan(
+            argumentos.target_range,
+            timeout=argumentos.timeout,
+            full_scan=argumentos.full,
+        )
     except InvalidTargetError as error:
         # Error esperado y controlado: el usuario escribió algo mal.
         # Mostramos un mensaje claro, NO el error técnico de Python.
@@ -134,6 +160,19 @@ def main() -> int:
     except Exception as error:
         print(f"[ERROR] No se pudo generar el PDF: {error}", file=sys.stderr)
         return 1
+
+    # RF-9: solo se genera si el usuario pidió --excel explícitamente.
+    # Igual que con el PDF, si falla no perdemos el escaneo ni el PDF
+    # que ya se generaron -- solo avisamos del problema puntual.
+    if argumentos.excel:
+        try:
+            ruta_excel = generate_excel(
+                sesion, output_path=argumentos.output.replace(".pdf", ".xlsx")
+            )
+            print(f"[+] Reporte Excel generado en: {ruta_excel}")
+        except Exception as error:
+            print(f"[ERROR] No se pudo generar el Excel: {error}", file=sys.stderr)
+            return 1
 
     return 0
 
